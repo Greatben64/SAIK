@@ -88,6 +88,12 @@
   footer { text-align: center; padding: 16px; font-size: 11px; color: #aaa; }
   footer a { color: #1797A4; text-decoration: none; }
 
+
+  /* Bannière d'installation PWA */
+  .install-banner { display:none; background:#1797A4; padding:10px 16px; align-items:center; justify-content:space-between; gap:10px; }
+  .install-banner p { color:#fff; font-size:13px; font-weight:500; flex:1; }
+  .btn-install { padding:8px 16px; background:#fff; color:#1797A4; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .btn-dismiss { background:none; border:none; color:#fff; font-size:18px; cursor:pointer; padding:4px; line-height:1; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .spin { display: inline-block; animation: spin 1s linear infinite; }
 </style>
@@ -101,6 +107,12 @@
     <span id="modeLabel">Îles-de-la-Madeleine · GEM/HRDPS</span>
   </div>
 </header>
+
+<div class="install-banner" id="installBanner">
+  <p>📲 Installez l'app pour une meilleure expérience</p>
+  <button class="btn-install" id="installBtn">Installer</button>
+  <button class="btn-dismiss" id="dismissBtn" title="Fermer">✕</button>
+</div>
 
 <div class="local-banner" id="localBanner">
   <h2>⚠️ Fichier ouvert localement</h2>
@@ -452,6 +464,47 @@ function loadDemo() {
   const blob = new Blob([JSON.stringify(m)], {type:"application/json"});
   document.getElementById("pwa-manifest").href = URL.createObjectURL(blob);
 })();
+
+
+// ── Installation PWA ──────────────────────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.style.display = 'none';
+  deferredPrompt = null;
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn  = document.getElementById('installBtn');
+  const dim  = document.getElementById('dismissBtn');
+  if (btn) btn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      document.getElementById('installBanner').style.display = 'none';
+    }
+    deferredPrompt = null;
+  });
+  if (dim) dim.addEventListener('click', () => {
+    document.getElementById('installBanner').style.display = 'none';
+  });
+});
+
+// ── Service Worker ────────────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js")
+    .then(reg => console.log("SW enregistré", reg.scope))
+    .catch(err => console.warn("SW erreur", err));
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────
 windMin = parseInt(document.getElementById("windMin").value) || 10;
